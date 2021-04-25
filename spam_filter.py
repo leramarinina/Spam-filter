@@ -7,18 +7,17 @@ name_file = input('Введите путь к файлу ')
 with open(name_file, encoding = 'utf8') as file:
     email = file.read()
 
-    spam_count = 0
-    for trigger in triggers_spam:
-        if len(re.findall(trigger, email)) != 0:
-            print(re.findall(trigger, email))
-            spam_count += 1
-    for trigger in triggers_normal:
-        if len(re.findall(trigger, email)) != 0:
-            spam_count -= 1
-    print(spam_count)
-    if spam_count >= 0 and spam_count < 2:
-        print('Это может быть спам, проверьте письмо')
-    elif spam_count < 4:
-        print('Скорее всего это спам')
-    elif spam_count >= 4:
-        print('Это точно спам')
+spam_count = 0
+for trigger in triggers_spam:
+    if len(re.findall(trigger, email)) != 0:
+        spam_count += 1
+for trigger in triggers_normal:
+    if len(re.findall(trigger, email)) != 0:
+        spam_count -= 1
+
+if spam_count >= 0 and spam_count < 2:
+    print('Это может быть спам, проверьте письмо')
+elif spam_count < 4:
+    print('Скорее всего это спам')
+elif spam_count >= 4:
+    print('Это точно спам')
