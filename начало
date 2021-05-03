@@ -1,0 +1,55 @@
+import string, math
+def punct_triggers(message): #посчитать процент ! от всех знаков препинания и учесть в спамность, может еще что-то
+    exclamation_marks = 0
+    punctuation_marks = 0
+    for symbol in message:
+        if symbol == '!':
+            exclamation_marks += 1
+        if symbol in string.punctuation:
+            punctuation_marks += 1
+    if punctuation_marks != 0:
+        return 0
+    else:
+        return exclamation_marks / punctuation_marks  # если больше, например, половины, учитывать плюсиком к спамости
+
+def bayes_spam(the_list): # собственно наивный байесовский классификатор
+    result = 0
+    for word in the_list:
+        nik = 0
+        if word in spam_triggers.keys():
+            nik = spam_triggers[word]
+        spam_probability = (a + nik) / (a * spam_m + spam_nk)
+        result += math.log10(spam_probability)
+    return result
+
+def bayes_notspam(the_list):
+    result = 0
+    for word in the_list:
+        nik = 0
+        if word in notspam_triggers.keys():
+            nik = notspam_triggers[word]
+        notspam_probability = (a + nik) / (a * notspam_m + notspam_nk)
+        result += math.log10(notspam_probability)
+    return result
+#в планах - сделать из выборки словарь (убрав предлоги, союзы и тп), где слова - ключи, значения - количество раз, которое это слово встретилось в выборке
+spam_triggers = {'подтвердить': 5, 'перевод': 2, 'горячее':10, 'вынуждены':3, 'горячий':7, 'банк':4, 'ссылке':11, 'выигрыш':8, 'деньги':13}
+notspam_triggers = {'яблоки':3, 'магазин':3, 'отправляю':6, 'банк': 5}
+#пока придуманные циферки для расчетов:
+a = 1 #параметр для сглаживания (чтобы не получить вероятность 0)
+spam_m = 50 #количество слов в обучающей выборке
+spam_nk = 35 #количество слов в обучающей выборке без учета предлогов, союзов и тп
+notspam_m = 45
+notspam_nk = 31
+
+message = input('Введите текст письма')
+punct = punct_triggers(message)
+for elem in string.punctuation: #очистить текст письма от пунктуации
+    message = message.replace(elem, "")
+message = message.split()
+p_spam = bayes_spam(message)
+p_notspam = bayes_notspam(message)
+print(p_spam, p_notspam)
+if p_spam > p_notspam:
+    print('это спам')
+else:
+    print('это не спам')
