@@ -7,7 +7,7 @@ def punct_triggers(message): #посчитать процент ! от всех 
             exclamation_marks += 1
         if symbol in string.punctuation:
             punctuation_marks += 1
-    if punctuation_marks != 0:
+    if punctuation_marks = 0:
         return 0
     else:
         return exclamation_marks / punctuation_marks  # если больше, например, половины, учитывать плюсиком к спамости
