@@ -1,4 +1,4 @@
-import string, math
+import string, math, nltk, pymorphy2
 def punct_triggers(message): #посчитать процент ! от всех знаков препинания и учесть в спамность, может еще что-то
     exclamation_marks = 0
     punctuation_marks = 0
@@ -31,6 +31,27 @@ def bayes_notspam(the_list):
         notspam_probability = (a + nik) / (a * notspam_m + notspam_nk)
         result += math.log10(notspam_probability)
     return result
+def addressing(text):
+    prob_thresh = 0.4
+    address = False
+
+    morph = pymorphy2.MorphAnalyzer()
+
+    i = 0
+    while i <= 10 and i <= len(nltk.word_tokenize(text)) - 1:
+        word = nltk.word_tokenize(text)[i]
+        for p in morph.parse(word):
+            if 'Name' in p.tag and p.score >= prob_thresh:
+                address = True
+        i += 1
+    return address
+
+def greeting(message):
+    greetings = ['привет', 'здравствуйте', 'здравствуй', 'доброе утро', 'добрый день', 'добрый вечер',
+                 'доброго времени суток', 'уважаемый', 'уважаемая', 'дорогой', 'дорогая', 'дорогие', 'уважаемые']
+    for elem in greetings:
+        if elem in message[:10]:
+            return True
 #в планах - сделать из выборки словарь (убрав предлоги, союзы и тп); дополнительно учесть капс, наличие приветстрвия и обращения по имени
 spam_triggers = {'перевод': 2, 'горячее':10, 'горячий':5, 'банк':4, 'ссылке':11, 'выигрыш':8, 'деньги':13,'бесплатно':10, 'шутка':5, 'нажмите': 7}
 notspam_triggers = {'яблоки':3, 'магазин':3, 'отправляю':6, 'банк': 5}
@@ -54,12 +75,16 @@ punct = punct_triggers(message)
 for elem in string.punctuation: #очистить текст письма от пунктуации
     message = message.replace(elem, "")
 
+address = addressing(message)
 message = message.lower()
+greet = greeting(message)
 message = message.split()
 p_spam = bayes_spam(message)
 p_notspam = bayes_notspam(message)
+print(address, greet)
 print(p_spam, p_notspam)
 print(message)
+
 if p_spam > p_notspam:
     print('это спам')
 else:
