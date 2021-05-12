@@ -1,24 +1,19 @@
-import mailbox
+import mailbox, re
 from bs4 import BeautifulSoup
 
-mbox = mailbox.mbox(r"Спам.mbox")
+mbox = mailbox.mbox(r"почта.mbox")
 
 for i, message in enumerate(mbox):
     content = message.get_payload(decode=True)
     if content:
+        print('true')
         text = content.decode("utf-8", "replace")
-        soup = BeautifulSoup(text, 'html.parser') #списала с какого-то сайта... текст (вместе с мусором) судя по всему в тэгах span
+        soup = BeautifulSoup(text, 'html.parser')
         item = soup.span
         if item:
-            item = item.contents #вот тут получается лист вроде из 1 элемента но ладно
+            item = item.contents
             for elem in item:
                 elem = str(elem).strip()
-                fl = False
-                for symbol in elem: #это я попыталась удалить все что между тэгами <> но оно не оч работает
-                    if symbol == '<':
-                        fl = True
-                    if symbol == '>':
-                        fl = False
-                    if fl:
-                        elem = elem.replace(symbol, '')
-            print(item)
+                elem_clear = re.sub(r'<[^<]+>', '', elem)
+                with open('spam_file.txt', 'a', encoding='utf-8') as new_file:
+                    new_file.write(elem_clear)
