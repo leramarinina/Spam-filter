@@ -33,7 +33,7 @@ def punct_triggers(message):
     if punctuation_marks == 0:
         return 0
     elif exclamation_marks / punctuation_marks >= 0.5:
-        return 1 #надо уточнить вес
+        return 2 #надо уточнить вес
     else:
         return 0
 
@@ -49,14 +49,14 @@ def bayes_spam(the_list): # собственно наивный байесовс
     return result
 
 
-def bayes_notspam(the_list):
+def bayes_not_spam(the_list):
     result = 0
     for word in the_list:
         nik = 0
-        if word in notspam_triggers.keys():
-            nik = notspam_triggers[word]
-        notspam_probability = (a + nik) / (a * notspam_m + notspam_nk)
-        result += math.log10(notspam_probability)
+        if word in not_spam_triggers.keys():
+            nik = not_spam_triggers[word]
+        not_spam_probability = (a + nik) / (a * not_spam_m + not_spam_nk)
+        result += math.log10(not_spam_probability)
     return result
 
 
@@ -72,7 +72,7 @@ def addressing(text): #наличие обращения по имени в на
                 address = True
         i += 1
     if not address:
-        return 0.5 #надо уточнить вес
+        return 1 #надо уточнить вес
     else:
         return 0
 
@@ -86,7 +86,7 @@ def greeting(message): #наличие приветствия в начале
             fg = True
             continue
     if not fg:
-        return 0.3 #надо уточнить вес
+        return 0.5 #надо уточнить вес
     else:
         return 0
 
@@ -107,10 +107,26 @@ for i, message in enumerate(mbox):
                 with open('spam_file.txt', 'a', encoding='utf-8') as new_file:
                     new_file.write(elem_clear)
 
+mbox = mailbox.mbox(r"почта.mbox")
+
+for i, message in enumerate(mbox):
+    content = message.get_payload(decode=True)
+    if content:
+        text = content.decode("utf-8", "replace")
+        soup = BeautifulSoup(text, 'html.parser')
+        item = soup.span
+        if item:
+            item = item.contents
+            for elem in item:
+                elem = str(elem).strip()
+                elem_clear = re.sub(r'<[^<]+>', '', elem)
+                with open('not_spam_file.txt', 'a', encoding='utf-8') as new_file:
+                    new_file.write(elem_clear)
+
 path_to_articles = 'C:\Lessons\проект'
 articles = [os.path.join(path_to_articles, item)
     for item in os.listdir(path_to_articles)
-    if item.endswith('.txt') and not item != 'text.txt'] #text.txt название входного файла
+    if item.endswith('.txt') and item != 'text.txt' and item != 'not_spam_file.txt'] #text.txt название входного файла
 
 articles_texts = []
 
@@ -145,7 +161,7 @@ spam_triggers = {}
 
 for i, article in enumerate(articles_texts):
     article_vector = articles_tfidf[i, :]
-    if i == 18: #проблемный кусок - большой файл читается не последним, хотя в папке по алфавиту последний...
+    if article[:6] == '1 445 ':
         words = get_top_tf_idf_words(article_vector, feature_names, 102)
     else:
         words = get_top_tf_idf_words(article_vector, feature_names, 5)
@@ -159,14 +175,53 @@ for i, article in enumerate(articles_texts):
             else:
                 spam_triggers[key] += words[key]
 
-notspam_triggers = {'яблоки':3, 'магазин':3, 'отправляю':6, 'банк': 5}
-#пока придуманные циферки для расчетов:
+#получили список спамных слов
+
+with open('not_spam_file.txt', encoding='utf8') as a_src:
+    text = a_src.read()
+
+not_spam_m = 0 #количество слов в обучающей выборке
+not_spam_nk = 0 #количество слов в обучающей выборке без стоп-слов
+stops = stopwords.words("russian")
+articles_texts = []
+articles_texts.append(text)
+articles_preprocessed = []
+for a_text in articles_texts:
+    a_tokens = wordpunct_tokenize(a_text)
+    a_lemmatized = ' '.join([morph.parse(item)[0].normal_form for item in a_tokens])
+    articles_preprocessed.append(a_lemmatized)
+    for token in a_tokens:
+        p = morph.parse(token)[0]
+        if p.tag.POS:
+            not_spam_m += 1
+        if p.tag.POS and token not in stops:
+            not_spam_nk += 1
+
+tfidf = TfidfVectorizer(analyzer="word", stop_words=stops)
+
+articles_tfidf = tfidf.fit_transform(articles_preprocessed)
+
+feature_names = np.array(tfidf.get_feature_names())
+
+not_spam_triggers = {}
+
+for i, article in enumerate(articles_texts):
+    article_vector = articles_tfidf[i, :]
+    words = get_top_tf_idf_words(article_vector, feature_names, 100)
+    if words:
+        for key in words:
+            t = morph.parse(key)[0]
+            if 'Name' in t.tag and t.score >= 0.4:
+                continue
+            if key not in not_spam_triggers.keys():
+                not_spam_triggers[key] = words[key]
+            else:
+                not_spam_triggers[key] += words[key]
+
 a = 1 #параметр для сглаживания (чтобы не получить вероятность 0)
-notspam_m = 45
-notspam_nk = 31
 
 message = ''
-filename = text.txt
+filename = 'text.txt'
 with open (filename, encoding='utf-8') as f:
     for line in f:
         if line == '':
@@ -183,11 +238,10 @@ message = message.lower()
 greet = greeting(message)
 message = message.split()
 p_spam = bayes_spam(message) + punct + address + greet
-p_notspam = bayes_notspam(message)
-#print(address, greet)
-print(p_spam, p_notspam)
+p_not_spam = bayes_not_spam(message)
+print(p_spam, p_not_spam)
 
-if p_spam > p_notspam:
+if p_spam > p_not_spam:
     print('это спам')
 else:
     print('это не спам')
